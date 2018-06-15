@@ -1,4 +1,4 @@
-# FPGA开发套件
+﻿# FPGA开发套件
 [Switch to the English version](./README.md)
 
 # 目录
@@ -29,9 +29,9 @@
 <a name="sec_1_2_1"></a>
 ### 1.2.1 开发套件的下载
 
-+ 对于https连接执行`git clone https://github.com/Huawei/huaweicloud-fpga.git`命令将开发套件下载到您的本地服务器。
++ 对于https连接执行`git clone https://github.com/fpga-accel/poc-fpga.git`命令将开发套件下载到您的本地服务器。
 
-+ 对于ssh连接执行`git clone git@github.com:Huawei/huaweicloud-fpga.git`命令将开发套件下载到您的本地服务器。
++ 对于ssh连接执行`git clone git@github.com:fpga-accel/poc-fpga.git`命令将开发套件下载到您的本地服务器。
 
 > 当在弹性云服务器中下载开发套件时，请确保弹性云服务器已经绑定了弹性IP。<br/>
 > 开发套件的下载依赖git工具，请确保在执行下载操作前已安装此软件。
