@@ -101,7 +101,7 @@ Example1示例主要实现用户逻辑的版本号读取、数据取反、加法
 	[root@CentOS7 bin]# ./ul_get_version -s 0
 	version: 0x20171108
 
-##### 例子2 测试取反寄存器
+##### 例子2 测试取反寄存器。
 
 **1. 设置取反器输入寄存器，输入一个不超过32bit的数据**
 
@@ -163,6 +163,22 @@ Example1示例主要实现用户逻辑的版本号读取、数据取反、加法
 		[0x00024628]: 0x00000000  - rxm: reg_axi_dis_cnt
 		[0x0002462c]: 0x00000000  - rxm: reg_axi_rc_cnt
 	 -------- Dump logic regs end -------- 
+
+##### 例子5 读取UL逻辑寄存器。
+
+运行读取UL逻辑寄存器的命令如下：
+
+`./ul_read_bar2_data -s XXX -a AAA`  
+ 
+其中AAA是需要读取的寄存器地址。
+
+##### 例子6 写入UL逻辑寄存器。
+
+运行写入UL逻辑寄存器的命令如下：
+
+`./ul_write_bar2_data -s XXX -a AAA -d DDD`  
+
+其中AAA是需要写入的寄存器的地址，DDD是实际要写入的数据。
 
 <a name="b"></b>
 使用example2
@@ -296,6 +312,15 @@ Example2主要实现用户逻辑DMA环回通道和DDR读取功能。
 
 **说明：** 以下步骤的命令都可以通过–h 参数获取帮助信息。
 
+**DDR读写测试中相关参数说明**  
+
+| Parameter | Description                              |
+| --------- | ---------------------------------------- |
+| **-s**    | slot ID. (The scope is [0, 7]) The default value is 0. |
+| **-n**    | DDR ID. The default value is 0.  |
+| **-a**    | DDR address |
+| **-d**    | DDR write data |
+
 ##### 步骤1 设置DDR值。
 
 运行命令为./ul_write_ddr_data -s 0 -n 0 -a *addr* -d *data*
@@ -418,21 +443,9 @@ Example3主要实现用户逻辑FMMU（Fpga Mermory Manage Unit）功能。
 | -t xxx | xxx: 线程个数. 数值范围必须是 [1, 10]. 默认为 **1**.   |
 | -s xxx | xxx: 槽位号. 默认为 **0**.                     |
 | -p xxx | xxx: 包的个数. 默认为 **1000**.                 |
-| -m xxx | xxx: 模式. 数值范围必须是 [0(环回模式), 1(读模式), 2(写模式)]. 默认为**0**. |
+| -m xxx | xxx: 模式. 数值范围必须是 [0(环回模式), 1(读模式), 2(写模式)]. 默认为**1**. |
 | -l xxx | xxx: 包长. 默认为 **64**.                     |
-| -r xxx | xxx: FPGA DDR读地址. 数值范围必须是 [0, 64*1024*1024*1024). 最大为 **64*1024*1024*1024**. |
-| -w xxx | xxx: FPGA DDR写地址. 数值范围必须是 [0, 64*1024*1024*1024). 最大为 **64*1024*1024*1024**. |
+| -r xxx | xxx: FPGA DDR读地址. 数值范围必须是 [0, 64*1024*1024*1024）. 最大为 **64*1024*1024*1024**. |
+| -w xxx | xxx: FPGA DDR写地址. 数值范围必须是 [0, 64*1024*1024*1024）. 最大为 **64*1024*1024*1024**. |
 | -h     | 该参数打印帮助信息.                               |
-
-**输出打印结果示例** 
-
-```bash
-alloc thread id 0 success.
-thread id 0, result num 1000, all come back, quit it .
-free thread_id success, 0
-
-------------
-Test Success.
-```
-
 

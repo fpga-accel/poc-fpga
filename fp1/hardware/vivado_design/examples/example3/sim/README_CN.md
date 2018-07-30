@@ -199,7 +199,7 @@ Example3中包含了五个测试用例`sv_demo_001`，`sv_demo_002`，`sv_demo_0
 
 #### 测试用例sv_demo_002说明
 
-测试用例`sv_demo_002`除了完成版本寄存器读取与测试寄存器的检测外还对UL进行了**DMA环回测试**，它与example2中sv_demo_002的区别是它需要构造Hardacc，也就是下述章节[修改仿真配置](./修改仿真配置)中 ACC_LEN_CFG宏添加，Hardacc可详见[用户开发指南](../../../../../ User_Development_Guide_for_an_FACS_cn)。
+测试用例`sv_demo_002`除了完成版本寄存器读取与测试寄存器的检测外还对UL进行了**DMA环回测试**，它与example2中sv_demo_002的区别是它需要构造Hardacc，也就是下述章节**修改仿真配置**中ACC_LEN_CFG宏添加，Hardacc描述详见[用户开发指南](../../../../../docs/User_Development_Guide_for_an_FACS_cn.docx)。
 
     详细过程如下：
     sv_demo_002会通过仿真平台构造报文与BD并通过与UL相连的AXI4-Stream接口发送给UL。

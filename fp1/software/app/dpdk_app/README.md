@@ -132,7 +132,7 @@ Launch one thread to loopback 1000 packages with fpga ddr of slot 0, package len
 | -s xxx    | xxx: slot id. The default value is **0**. |  
 | -p xxx    | xxx: package num. The default value is **1000**. |  
 | -m xxx    | xxx: mode. The value range should be [0(loopback), 1(read), 2(write)]. The default value is **0**. |  
-| -l xxx    | xxx: package len. The default value is **64**. |  
+| -l xxx    | xxx: package len. The default value is **64**. The value should be [1, 4*1024*1024]. |  
 | -r xxx    | xxx: fpga ddr read addr. The value should be [0, 64*1024*1024*1024). The maximum value is **64*1024*1024*1024**. |   
 | -w xxx    | xxx: fpga ddr write addr. The value should be [0, 64*1024*1024*1024). The maximum value is **64*1024*1024*1024**. |   
 | -h        | This parameter prints help information.  |  

@@ -119,8 +119,11 @@ wire                                         stxqm2inq_fifo_rd          ;
 wire                                         ppm2stxm_rxffc_wr          ;           
 wire                                         tx2kernel_bd_wen           ; 
 wire                                         mmu_tx2rx_bd_wen           ; 
+wire                                         mmu_tx2rx_wr_bd_wen        ; 
+wire                                         mmu_tx2rx_rd_bd_wen        ; 
 
-wire  [5:0]                                  tx_bd_sta                  ;
+wire  [15:0]                                 tx_bd_sta                  ;
+wire  [15:0]                                 tx_bd_err                  ;
 wire  [10:0]                                 mmu_tx_online_beat         ;
 wire  [10:0]                                 reg_mmu_tx_online_beat     ;
 
@@ -197,7 +200,10 @@ mmu_tx_bd u_mmu_tx_bd
     .ppm2stxm_rxffc_wr              ( ppm2stxm_rxffc_wr         ),
     .tx2kernel_bd_wen               ( tx2kernel_bd_wen          ),
     .mmu_tx2rx_bd_wen               ( mmu_tx2rx_bd_wen          ),
+    .mmu_tx2rx_wr_bd_wen            ( mmu_tx2rx_wr_bd_wen       ),
+    .mmu_tx2rx_rd_bd_wen            ( mmu_tx2rx_rd_bd_wen       ),
     .tx_bd_sta                      ( tx_bd_sta                 ),
+    .tx_bd_err                      ( tx_bd_err                 ),
     .mmu_tx_online_beat             ( mmu_tx_online_beat        ),
     .reg_mmu_tx_online_beat         ( reg_mmu_tx_online_beat    )        
         
@@ -307,6 +313,7 @@ u_reg_mmu_tx
     .reg_ddr_rsp_sn                 ( reg_ddr_rsp_sn            ),
     .reg_seq_info                   ( reg_seq_info              ),
     .tx_bd_sta                      ( tx_bd_sta                 ),
+    .tx_bd_err                      ( tx_bd_err                 ),
     .mmu_tx_online_beat             ( mmu_tx_online_beat        ),
 
     //err
@@ -322,6 +329,8 @@ u_reg_mmu_tx
     .ppm2stxm_rxffc_wr              ( ppm2stxm_rxffc_wr         ),
     .tx2kernel_bd_wen               ( tx2kernel_bd_wen          ),
     .mmu_tx2rx_bd_wen               ( mmu_tx2rx_bd_wen          ),
+    .mmu_tx2rx_wr_bd_wen            ( mmu_tx2rx_wr_bd_wen       ),
+    .mmu_tx2rx_rd_bd_wen            ( mmu_tx2rx_rd_bd_wen       ),
 
     .reg_axis_receive_cnt_en        ( reg_axis_receive_cnt_en   ),
     .reg_hacc_receive_cnt_en        ( reg_hacc_receive_cnt_en   ),

@@ -91,12 +91,21 @@ int fddr_access_mode_init(Callbackfunc callback) {
             //printf("%s: pci_port_id_to_slot_id failed(%d)\r\n", __FUNCTION__, ret);
     		continue;
         }
-    }
+
+        ret = pci_bar2_init_env(g_port_id[idx]);
+        if (ret != 0) {
+            printf("%s: pci_bar2_init_env failed(%d)\r\n", __FUNCTION__, ret);
+            return ret;
+        }
+    } 
     
     g_init_flag = 1;
     (void)pthread_mutex_unlock(&g_init_lock);
     
     return 0;
+}
+int fddr_access_mode_uninit() {
+    return pci_bar2_uninit_env();
 }
 
 int alloc_thread_id(unsigned int *thread_id) {
@@ -124,8 +133,9 @@ int read_data_from_fddr (unsigned int thread_id, unsigned int slot_id, rw_ddr_da
         return -1;
     }
 
-    if(rw_data.cpu_vir_dst_addr == 0 || rw_data.length == 0) {
-        printf("call check_thread_id_valid fail.\n");
+    if(rw_data.cpu_vir_dst_addr == 0 || rw_data.length == 0         \
+        || rw_data.length > (4*1024*1024)) {
+        printf("call check_cpu_vir_dst_addr_valid fail.\n");
         return -2;
     }
 
@@ -149,7 +159,8 @@ int write_data_to_fddr(unsigned int thread_id, unsigned int slot_id, rw_ddr_data
         return -1;
     }
 
-    if(rw_data.cpu_vir_src_addr == 0 || rw_data.length == 0) {
+    if(rw_data.cpu_vir_src_addr == 0 || rw_data.length == 0     \
+        || rw_data.length > (4*1024*1024)) {
         printf("call check_thread_id_valid fail.\n");
         return -2;
     }
@@ -177,7 +188,8 @@ int process_data_with_fpga(unsigned int thread_id, unsigned int slot_id, rw_ddr_
     /* app should provide src addr and dst addr to store result. */
     if(rw_data.cpu_vir_src_addr == 0    \
         || rw_data.length == 0      \
-        || rw_data.cpu_vir_dst_addr == 0) {
+        || rw_data.cpu_vir_dst_addr == 0    \
+        || rw_data.length > (4*1024*1024)) {
         printf("call check_thread_id_valid fail.\n");
         return -2;
     }
@@ -208,18 +220,10 @@ int read_register(unsigned int slot_id, unsigned int addr, unsigned int *value) 
         return -4;
     }
     
-    ret = pci_bar2_init_env(g_port_id[slot_id]);
-    if (ret != 0) {
-        printf("%s: pci_bar2_init_env failed(%d)\r\n", __FUNCTION__, ret);
-        return ret;
-    }
-
-    (void)pci_bar2_read_regs(&addr, sizeof(addr)/sizeof(unsigned int), value);
+    ret = pci_bar2_read_regs(g_port_id[slot_id], &addr, sizeof(addr)/sizeof(unsigned int), value);
     printf("addr: 0x%08x, data: 0x%08x\r\n", addr, *value);
 
-    (void)pci_bar2_uninit_env();
-
-    return 0;
+    return ret;
 }
 int write_register(unsigned int slot_id ,unsigned int addr, unsigned int value) {
     int ret = 0;
@@ -228,16 +232,8 @@ int write_register(unsigned int slot_id ,unsigned int addr, unsigned int value) 
         printf("device of slot id %d not exist.\n", slot_id);
         return -4;
     }
-    
-    ret = pci_bar2_init_env(g_port_id[slot_id]);
-    if (ret != 0) {
-        printf("%s: pci_bar2_init_env failed(%d)\r\n", __FUNCTION__, ret);
-        return ret;
-    }
 
-    (void)pci_bar2_write_regs(&addr, &value, sizeof(addr)/sizeof(unsigned int));
+    ret = pci_bar2_write_regs(g_port_id[slot_id], &addr, &value, sizeof(addr)/sizeof(unsigned int));
 
-    (void)pci_bar2_uninit_env();
-
-    return 0;
+    return ret;
 }

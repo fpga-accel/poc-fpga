@@ -74,7 +74,7 @@ ro_reg_inst
     .din                ( reg_ver_time              )   
     );
 
-assign reg_ver_time = 32'h2018_0612;
+assign reg_ver_time = 32'h2018_0702;
 
 ro_reg_inst
     #(

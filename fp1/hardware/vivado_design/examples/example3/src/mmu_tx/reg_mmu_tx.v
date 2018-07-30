@@ -32,7 +32,8 @@ module reg_mmu_tx #
                  //cfg
                  output       [10:0]              reg_mmu_tx_online_beat      ,
                  //sta
-                 input  wire  [5:0]               tx_bd_sta                   ,
+                 input  wire  [15:0]              tx_bd_sta                   ,
+                 input  wire  [15:0]              tx_bd_err                   ,
                  input  wire  [10:0]              mmu_tx_online_beat          ,
                  input        [31:0]              reg_mmu_tx_pkt_sta          ,
                  //err
@@ -53,6 +54,8 @@ module reg_mmu_tx #
                  input                            ppm2stxm_rxffc_wr           ,
                  input                            tx2kernel_bd_wen            ,
                  input                            mmu_tx2rx_bd_wen            ,
+                 input                            mmu_tx2rx_wr_bd_wen         ,
+                 input                            mmu_tx2rx_rd_bd_wen         ,
 
                  input                            reg_axis_receive_cnt_en     ,
                  input                            reg_hacc_receive_cnt_en     ,
@@ -84,6 +87,7 @@ wire       [31:0]           cpu_data_pf_out000       ;
 
 //err
 wire       [31:0]           cpu_data_pf_out080       ;
+wire       [31:0]           cpu_data_pf_out081       ;
 
 //sta
 wire       [31:0]           cpu_data_pf_out100       ;
@@ -101,6 +105,7 @@ wire       [31:0]           cpu_data_pf_out10b       ;
 wire       [31:0]           cpu_data_pf_out10c       ;
 wire       [31:0]           cpu_data_pf_out10d       ;
 wire       [31:0]           cpu_data_pf_out10e       ;
+wire       [31:0]           cpu_data_pf_out10f       ;
 
 //cnt
 wire       [31:0]           cpu_data_pf_out180       ;
@@ -128,6 +133,8 @@ wire       [31:0]           cpu_data_pf_out195       ;
 wire       [31:0]           cpu_data_pf_out196       ;
 wire       [31:0]           cpu_data_pf_out197       ;
 wire       [31:0]           cpu_data_pf_out198       ;
+wire       [31:0]           cpu_data_pf_out199       ;
+wire       [31:0]           cpu_data_pf_out19a       ;
 
 //********************************************************************************************************************
 //    cfg
@@ -158,7 +165,7 @@ err_wc_reg_inst
         .ADDR_WIDTH(24),
         .VLD_WIDTH(32)
          )
-    inst_reg_bd_sta_err                                      
+    inst_reg_pkt_err                                      
      (
      .clk                ( clk_sys                  ),       
      .reset              ( rst                      ),       
@@ -171,6 +178,25 @@ err_wc_reg_inst
      .err_flag_in        ( reg_mmu_tx_pkt_err       )        
      );
 
+err_wc_reg_inst
+        #(
+        .ADDR_WIDTH(24),
+        .VLD_WIDTH(32)
+         )
+    inst_reg_bd_err                                      
+     (
+     .clk                ( clk_sys                  ),       
+     .reset              ( rst                      ),       
+
+     .cpu_data_out       ( cpu_data_pf_out081       ),       
+     .cpu_data_in        ( cpu_data_in              ),       
+     .cpu_addr           ( cpu_addr                 ),       
+     .cpu_wr             ( cpu_wr                   ),       
+     .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h081}),      
+     .err_flag_in        ( {16'd0,tx_bd_err}       )        
+     );
+
+
 //********************************************************************************************************************
 //    sta
 //********************************************************************************************************************
@@ -179,7 +205,7 @@ ro_reg_inst
         .ADDR_WIDTH(24),
         .VLD_WIDTH(32)                                    
          )
-     inst_reg_bd_sta                                     
+     inst_reg_tx_pkt_sta                                     
      (
      .cpu_data_out       ( cpu_data_pf_out100       ),   
      .cpu_addr           ( cpu_addr                 ),   
@@ -190,15 +216,17 @@ ro_reg_inst
 ro_reg_inst
         #(
         .ADDR_WIDTH(24),
-        .VLD_WIDTH(11)                                    
+        .VLD_WIDTH(32)                                    
          )
-     inst_reg_hacc_sn                                     
+     inst_reg_bd_sta                                     
      (
      .cpu_data_out       ( cpu_data_pf_out101       ),   
      .cpu_addr           ( cpu_addr                 ),   
      .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h101}),   
-     .din                ( reg_hacc_sn              )    
+     .din                ( {16'd0,tx_bd_sta}         )    
      );
+
+
 
 ro_reg_inst
         #(
@@ -361,15 +389,29 @@ ro_reg_inst
 ro_reg_inst
         #(
         .ADDR_WIDTH(24),
-        .VLD_WIDTH(32)                                    
+        .VLD_WIDTH(16)                                    
          )
      u_mmu_tx_online_beat                                     
      (
      .cpu_data_out       ( cpu_data_pf_out10e       ),   
      .cpu_addr           ( cpu_addr                 ),   
      .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h10e}),   
-     .din                ( {5'd0,mmu_tx_online_beat,10'd0,tx_bd_sta}                )    
+     .din                ( {5'd0,mmu_tx_online_beat})    
      ); 
+
+ro_reg_inst
+        #(
+        .ADDR_WIDTH(24),
+        .VLD_WIDTH(11)                                    
+         )
+     inst_reg_hacc_sn                                     
+     (
+     .cpu_data_out       ( cpu_data_pf_out10f       ),   
+     .cpu_addr           ( cpu_addr                 ),   
+     .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h10f}),   
+     .din                ( reg_hacc_sn              )    
+     );
+
 
 //********************************************************************************************************************
 //    cnt
@@ -753,6 +795,38 @@ inst_mmu_tx2rx_bd_wen
      .cnt_reg_clr        ( cnt_reg_clr              )      
      );
 
+cnt32_reg_inst
+         #(
+         .ADDR_WIDTH(24)                                        
+          )
+inst_mmu_tx2rx_wr_bd_wen
+     (
+     .clks               ( clk_sys                  ),     
+     .reset              ( rst                      ),     
+     .cpu_data_out       ( cpu_data_pf_out199       ),     
+     .cpu_addr           ( cpu_addr                 ),     
+     .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h199}),     
+     .cnt_reg_inc        ( mmu_tx2rx_wr_bd_wen      ),     
+     .cnt_reg_clr        ( cnt_reg_clr              )      
+     );
+
+cnt32_reg_inst
+         #(
+         .ADDR_WIDTH(24)                                        
+          )
+inst_mmu_tx2rx_rd_bd_wen
+     (
+     .clks               ( clk_sys                  ),     
+     .reset              ( rst                      ),     
+     .cpu_data_out       ( cpu_data_pf_out19a       ),     
+     .cpu_addr           ( cpu_addr                 ),     
+     .its_addr           ( {MMU_TX_CM_ID,3'd0,9'h19a}),     
+     .cnt_reg_inc        ( mmu_tx2rx_rd_bd_wen      ),     
+     .cnt_reg_clr        ( cnt_reg_clr              )      
+     );
+
+
+
 //********************************************************************************************************************
 always @ (posedge clk_sys or posedge rst)
 begin
@@ -775,6 +849,7 @@ begin
     else begin
         casez(cpu_addr[6:0])
            7'h00: cpu_data_out_err_pf <= cpu_data_pf_out080;
+           7'h01: cpu_data_out_err_pf <= cpu_data_pf_out081;
          default: cpu_data_out_err_pf <= 32'd0;
         endcase
     end
@@ -802,6 +877,7 @@ begin
            7'h0c: cpu_data_out_sts_pf <= cpu_data_pf_out10c;           
            7'h0d: cpu_data_out_sts_pf <= cpu_data_pf_out10d;           
            7'h0e: cpu_data_out_sts_pf <= cpu_data_pf_out10e;           
+           7'h0f: cpu_data_out_sts_pf <= cpu_data_pf_out10f;           
          default: cpu_data_out_sts_pf <= 32'd0;
        endcase
     end
@@ -839,6 +915,8 @@ begin
            7'h16: cpu_data_out_cnt_pf <= cpu_data_pf_out196;           
            7'h17: cpu_data_out_cnt_pf <= cpu_data_pf_out197;           
            7'h18: cpu_data_out_cnt_pf <= cpu_data_pf_out198;           
+           7'h19: cpu_data_out_cnt_pf <= cpu_data_pf_out199;           
+           7'h1a: cpu_data_out_cnt_pf <= cpu_data_pf_out19a;           
          default: cpu_data_out_cnt_pf <= 32'd0;
        endcase
     end

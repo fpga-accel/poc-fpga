@@ -29,9 +29,9 @@ Before using the FPGA development suite, you must perform 1.2.1~1.2.3 steps to c
 <a name="sec_1_2_1"></a>
 ### 1.2.1 Downloading Suite
 
-+ For HTTPS connections, run the `git clone https://github.com/fpga-accel/poc-fpga.git` command to download the suite.
++ For HTTPS connections, run the `git clone https://github.com/fpga_accel/poc-fpga.git` command to download the suite.
 
-+ For SSH connections, run the `git clone git@github.com:fpga-accel/poc-fpga.git` command to download the suite.
++ For SSH connections, run the `git clone git@github.com:fpga_accel/poc-fpga.git` command to download the suite.
 
 > Ensure that the ECS is bound with an EIP before using the ECS to download the development suite.<br/>
 > Ensure that the Git tool is installed before downloading the development suite.

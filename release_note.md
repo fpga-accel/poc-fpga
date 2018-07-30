@@ -37,6 +37,12 @@
   - 支持用户最多使用`4个DDR控制器`
 
 
+# Release 1.0.1
+- 文档优化，合入各类文档体验问题100余个；
+- setup.sh脚本优化，解决文件覆盖异常提示；
+- pmd代码缺陷解决；
+- 修改perf.cpp，datamover.h，shim.cpp适配代码扫描；
+- dpdk编译脚本优化：修改build_dpdk.sh与build_dpdk_app.sh脚本，执行错误打印相应的错误说明及返回相应的错误码；执行成功后，打印成功信息；
 # Release 1.0.0
 - 这是Huawei Cloud FPGA设计实例的初始版本
 ---

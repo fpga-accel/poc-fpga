@@ -166,6 +166,19 @@ Run the following command to print the DFx status:
 		[0x0002462c]: 0x00000000  - rxm: reg_axi_rc_cnt
 	 -------- Dump logic regs end -------- 
 
+##### Example 5 Read UL logic register
+
+`./ul_read_bar2_data -s XXX -a AAA`  
+
+AAA is the address which you want to read.
+
+##### Example 6 Write UL logic register
+
+`./ul_write_bar2_data -s XXX -a AAA -d DDD`  
+
+AAA is the address to be written, and DDD is the actual data to be written.
+
+
 Example 2 Operation Instructions
 ------------
 
@@ -300,6 +313,15 @@ Currently, four 16GB 2RX8 DDRs are provided for users. The DDR read/write test i
 ##### Note
 Users can use the **– h** parameter to obtain help information in the following steps.
 
+**Command Parameters**  
+
+| Parameter | Description                              |
+| --------- | ---------------------------------------- |
+| **-s**    | slot ID. (The scope is [0, 7]) The default value is 0. |
+| **-n**    | DDR ID. The default value is 0.  |
+| **-a**    | DDR address |
+| **-d**    | DDR write data |
+
 ##### Step 1 Set the DDR value.
 
 Run the **./ul_write_ddr_data -s 0 -n 0 -a** *addr* **-d** *data* command.
@@ -423,19 +445,8 @@ Launch one thread to loopback 1000 packages with fpga ddr of slot 0, package len
 | -t xxx    | xxx: thread num. The value should be [1, 10]. The default value is **1**. |
 | -s xxx    | xxx: slot id. The default value is **0**. |
 | -p xxx    | xxx: package num. The default value is **1000**. |
-| -m xxx    | xxx: mode. The value range should be [0(loopback), 1(read), 2(write)]. The default value is **0**. |
-| -l xxx    | xxx: package len. The default value is **64**. |
+| -m xxx    | xxx: mode. The value range should be [0(loopback), 1(read), 2(write)]. The default value is **1**. |
+| -l xxx    | xxx: package len. The value should be [1, 512*1024].The default value is **64**. |
 | -r xxx    | xxx: fpga ddr read addr. The value should be [0, 64*1024*1024*1024). The maximum value is **64*1024*1024*1024**. |
 | -w xxx    | xxx: fpga ddr write addr. The value should be [0, 64*1024*1024*1024). The maximum value is **64*1024*1024*1024**. |
 | -h        | This parameter prints help information.  |
-
-**Information similar to the following is displayed:** 
-
-```bash
-alloc thread id 0 success.
-thread id 0, result num 1000, all come back, quit it .
-free thread_id success, 0
-
-------------
-Test Success.
-```

@@ -60,6 +60,7 @@
 
 static struct rte_ring *g_queue_ring;
 static pthread_mutex_t g_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_enqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct thread_info g_thread_info[THREAD_MAX_NUM];
 static Callbackfunc g_resultcallback;
 static pthread_t tx_thread;
@@ -100,23 +101,26 @@ int memory_manager_global_init(void) {
     MEM_POOL_CFG_STRU mem_pool_stru;
     int8_t ret = 0;
 
-    /* 1M */
-    mem_pool_stru.buf_type = MBUF_512K;
-    mem_pool_stru.buf_num = 2000;
+    /* 4M */
+    /*mem_pool_stru.buf_type = MBUF_4M;
+    mem_pool_stru.buf_num = 0;
     ret = memory_manager_init(&mem_pool_stru);
     if(ret)
     {
-        printf("call memory_manager_init 1M error.\n");
+        printf("call memory_manager_init 4M error.\n");
         return ret;
     }
+    */
 
-    /* 16M */
-    mem_pool_stru.buf_type = MBUF_16M;
-    mem_pool_stru.buf_num = 500;
+    /* 512K */
+    //mem_pool_stru.buf_type = MBUF_512K;
+    //mem_pool_stru.buf_num = 5000;
+    mem_pool_stru.buf_type = MBUF_128B;
+    mem_pool_stru.buf_num = 2000000;
     ret = memory_manager_init(&mem_pool_stru);
     if(ret)
     {
-        printf("call memory_manager_init 16M error.\n");
+        printf("call memory_manager_init error.\n");
         return ret;
     }
 
@@ -157,7 +161,7 @@ int dpdk_gloal_env_init(Callbackfunc callback) {
 }
 
 void thread_id_resource_init(void) {
-    uint8_t idx = 0;
+    uint32_t idx = 0;
 
     for(idx = 0; idx < THREAD_MAX_NUM; idx++) {
         g_thread_info[idx].bd_mempool = NULL;
@@ -201,7 +205,7 @@ int check_thread_id_valid(unsigned int thread_id) {
     }
 }
 int alloc_thread_id_resource(unsigned int *thread_id) {
-    uint8_t idx = 0;
+    uint32_t idx = 0;
     int8_t ret = 0;
 
     (void)pthread_mutex_lock(&g_thread_mutex);
@@ -422,11 +426,9 @@ void *fpga_ddr_rw_tx_process_thread(void *arg) {
     BD_MSG_INFO *bd_msg;
     int real_tx_nb = 0;
     int tx_retry_cnt = 0;
-    int cnt = 0;
     (void)arg;
     
     while(1) {
-        for(cnt = 0; cnt < 5000; cnt++) {;}
         ret = rte_ring_sc_dequeue(g_queue_ring, &tx_msg);
         if (ret == -ENOENT) {
             (void)usleep(10);         
@@ -449,7 +451,7 @@ void *fpga_ddr_rw_tx_process_thread(void *arg) {
             }
             else if(real_tx_nb == 0) {
                 tx_retry_cnt++;
-                if(tx_retry_cnt > 100) {
+                if(tx_retry_cnt > 10000) {
                     printf("call rte_eth_tx_burst fail.!!!!!!!!!!\n");
                     return NULL;
                 }
@@ -461,7 +463,6 @@ void *fpga_ddr_rw_tx_process_thread(void *arg) {
                 return NULL;
             }
         }
-        
         rte_pktmbuf_free(bd_msg->tx_bd_mbuf);
         free(tx_msg);
     }
@@ -518,7 +519,7 @@ void *fpga_ddr_rw_rx_process_thread(void *arg) {
             }
 
             rx_bd = rte_pktmbuf_mtod(mbuf, BD_MESSAGE_STRU*);
-
+            
             /* get src_addr of bd */
             ret = memory_manager_p2v((void*)(rx_bd->src_addr), &vir_addr);
             if(ret) {
@@ -554,7 +555,7 @@ void *fpga_ddr_rw_rx_process_thread(void *arg) {
                 g_resultcallback(hard_acc_dst->thread_id, slot_id[idx], rw_data, WRITE_MODE);
             }
             else if(hard_acc_dst->opcode == LOOPBACK_MODE) {
-                rw_data.cpu_vir_dst_addr = (unsigned long)vir_addr + sizeof(HARDACC_STRU);
+                rw_data.cpu_vir_dst_addr = (unsigned long long)vir_addr + sizeof(HARDACC_STRU);
                 rw_data.cpu_vir_src_addr = (unsigned long long)((char*)hard_acc_src + sizeof(HARDACC_STRU));
                 rw_data.fpga_ddr_rd_addr = hard_acc_dst->dst_fpga_phy_addr;
                 rw_data.fpga_ddr_wr_addr = hard_acc_dst->src_fpga_phy_addr;
@@ -615,7 +616,7 @@ int read_data_from_ddr_func (unsigned int thread_id, unsigned int port_id, rw_dd
     /*alloc bd to shell.*/
     mbuf_bd = rte_pktmbuf_alloc(g_thread_info[thread_id].bd_mempool);
     if (NULL == mbuf_bd) {
-        printf("alloc shell bd resource fail.\n");
+        //printf("alloc shell bd resource fail.\n");
         return -1;
     }
 
@@ -626,10 +627,10 @@ int read_data_from_ddr_func (unsigned int thread_id, unsigned int port_id, rw_dd
     (void)memset_s(data_pos_in_mbuf, sizeof(BD_MESSAGE_STRU), 0, sizeof(BD_MESSAGE_STRU));
  
     /*alloc hardacc mbuf */
-    hard_acc = (HARDACC_STRU*)memory_manager_alloc_bulk(sizeof(HARDACC_STRU) + 32);
+    hard_acc = (HARDACC_STRU*)memory_manager_alloc_n_region(sizeof(HARDACC_STRU) + 32, MEMORY_POOL_READ_HARD_ACC_RAGINE, MEMORY_POOL_SEPERATE_RAGINE_NUM);
     if (NULL == hard_acc) {
         rte_pktmbuf_free(mbuf_bd);
-        printf("alloc hardacc resource fail.\n");
+        //printf("alloc hardacc resource fail.\n");
         return -2;
     }
     hard_acc->dst_fpga_phy_addr = rw_data.fpga_ddr_rd_addr;
@@ -639,7 +640,7 @@ int read_data_from_ddr_func (unsigned int thread_id, unsigned int port_id, rw_dd
         
         rte_pktmbuf_free(mbuf_bd);
         (void)memory_manager_free_bulk((void*)hard_acc);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p hard_acc fail .\n");
         return -3;
     }
     /*write src_addr*/
@@ -649,7 +650,7 @@ int read_data_from_ddr_func (unsigned int thread_id, unsigned int port_id, rw_dd
     if(ret) {
         rte_pktmbuf_free(mbuf_bd);
         (void)memory_manager_free_bulk((void*)hard_acc);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p cpu_vir_dst_addr fail .\n");
         return -4;
     }
     hard_acc->dst_addr = phy_addr;
@@ -670,15 +671,18 @@ int read_data_from_ddr_func (unsigned int thread_id, unsigned int port_id, rw_dd
     }
     bd_msg->port_id = port_id;
     bd_msg->tx_bd_mbuf = mbuf_bd;
-    
+
+    (void)pthread_mutex_lock(&g_enqueue_mutex);
     ret = rte_ring_mp_enqueue(g_queue_ring, bd_msg);
     if(ret) {
         printf("rte_ring_mp_enqueue failed\n");
         rte_pktmbuf_free(mbuf_bd);
         (void)memory_manager_free_bulk((void*)hard_acc);
         free(bd_msg);
+        (void)pthread_mutex_unlock(&g_enqueue_mutex);
         return ret;
     }
+    (void)pthread_mutex_unlock(&g_enqueue_mutex);
 
     return 0;
 }
@@ -695,7 +699,7 @@ int write_data_to_ddr_func (unsigned int thread_id, unsigned int port_id, rw_ddr
     /*alloc bd to shell.*/
     mbuf_bd = rte_pktmbuf_alloc(g_thread_info[thread_id].bd_mempool);
     if (NULL == mbuf_bd) {
-        printf("alloc shell bd resource fail.\n");
+        //printf("alloc shell bd resource fail.\n");
         return -1;
     }
 
@@ -709,14 +713,14 @@ int write_data_to_ddr_func (unsigned int thread_id, unsigned int port_id, rw_ddr
     hard_acc = (HARDACC_STRU*)(rw_data.cpu_vir_src_addr - sizeof(HARDACC_STRU));
     if (NULL == hard_acc) {
         rte_pktmbuf_free(mbuf_bd);
-        printf("alloc hardacc resource fail.\n");
+        printf("write_data_to_ddr_func hard_acc null.\n");
         return -2;
     }
     ret = memory_manager_v2p((void*)hard_acc, &phy_addr);
     if(ret) {
         
         rte_pktmbuf_free(mbuf_bd);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p hard_acc fail .\n");
         return -3;
     }
 
@@ -725,18 +729,18 @@ int write_data_to_ddr_func (unsigned int thread_id, unsigned int port_id, rw_ddr
     hard_acc->src_fpga_phy_addr = rw_data.fpga_ddr_wr_addr;
     
     /*alloc dst_addr mbuf */
-    dst_addr = (HARDACC_STRU*)memory_manager_alloc_bulk(sizeof(HARDACC_STRU) + 32);
+    dst_addr = (HARDACC_STRU*)memory_manager_alloc_n_region(sizeof(HARDACC_STRU) + 32, MEMORY_POOL_WRITE_HARD_ACC_RAGINE, MEMORY_POOL_SEPERATE_RAGINE_NUM);
     if (NULL == dst_addr) {
         rte_pktmbuf_free(mbuf_bd);
-        printf("alloc hardacc resource fail.\n");
+        //printf("alloc hardacc resource fail.\n");
         return -2;
     }
 
-    ret = memory_manager_v2p((void*)dst_addr, &phy_addr);
+    ret = memory_manager_v2p((void*)(dst_addr), &phy_addr);
     if(ret) {
         rte_pktmbuf_free(mbuf_bd);
         (void)memory_manager_free_bulk((void*)dst_addr);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p dst_addr fail .\n");
         return -3;
     }
 
@@ -757,15 +761,18 @@ int write_data_to_ddr_func (unsigned int thread_id, unsigned int port_id, rw_ddr
     }
     bd_msg->port_id = port_id;
     bd_msg->tx_bd_mbuf = mbuf_bd;
-    
+
+    (void)pthread_mutex_lock(&g_enqueue_mutex);
     ret = rte_ring_mp_enqueue(g_queue_ring, bd_msg);
     if(ret) {
         printf("rte_ring_mp_enqueue failed\n");
         (void)memory_manager_free_bulk((void*)hard_acc);
         free(bd_msg);
         rte_pktmbuf_free(mbuf_bd);
+        (void)pthread_mutex_unlock(&g_enqueue_mutex);
         return ret;
     }
+    (void)pthread_mutex_unlock(&g_enqueue_mutex);
 
     return 0;    
 }
@@ -781,7 +788,7 @@ int process_data_with_fpga_func(unsigned int thread_id, unsigned int port_id, rw
     /*alloc bd to shell.*/
     mbuf_bd = rte_pktmbuf_alloc(g_thread_info[thread_id].bd_mempool);
     if (NULL == mbuf_bd) {
-        printf("alloc shell bd resource fail.\n");
+        //printf("alloc shell bd resource fail.\n");
         return -1;
     }
 
@@ -795,14 +802,14 @@ int process_data_with_fpga_func(unsigned int thread_id, unsigned int port_id, rw
     hard_acc = (HARDACC_STRU*)(rw_data.cpu_vir_src_addr - sizeof(HARDACC_STRU));
     if (NULL == hard_acc) {
         rte_pktmbuf_free(mbuf_bd);
-        printf("alloc hardacc resource fail.\n");
+        printf("process_data_with_fpga_func hard_acc null .\n");
         return -2;
     }
     ret = memory_manager_v2p((void*)hard_acc, &phy_addr);
     if(ret) {
         
         rte_pktmbuf_free(mbuf_bd);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p hard_acc fail .\n");
         return -3;
     }
 
@@ -816,7 +823,7 @@ int process_data_with_fpga_func(unsigned int thread_id, unsigned int port_id, rw
     if(ret) {
         
         rte_pktmbuf_free(mbuf_bd);
-        printf("call memory_manager_v2p fail .\n");
+        printf("call memory_manager_v2p cpu_vir_dst_addr fail .\n");
         return -4;
     }
     hard_acc->dst_addr = phy_addr;
@@ -836,14 +843,17 @@ int process_data_with_fpga_func(unsigned int thread_id, unsigned int port_id, rw
     }
     bd_msg->port_id = port_id;
     bd_msg->tx_bd_mbuf = mbuf_bd;
-    
+
+    (void)pthread_mutex_lock(&g_enqueue_mutex);
     ret = rte_ring_mp_enqueue(g_queue_ring, bd_msg);
     if(ret) {
         printf("rte_ring_mp_enqueue failed\n");
         rte_pktmbuf_free(mbuf_bd);
         free(bd_msg);
+        (void)pthread_mutex_unlock(&g_enqueue_mutex);
         return ret;
     }
+    (void)pthread_mutex_unlock(&g_enqueue_mutex);
 
     return 0; 
 }

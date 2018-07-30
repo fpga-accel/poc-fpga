@@ -4,13 +4,13 @@
 //
 //     This program is free software; you can redistribute it and/or modify
 //     it under the terms of the Huawei Software License (the "License").
-//     A copy of the License is located in the "LICENSE" file accompanying
+//     A copy of the License is located in the "LICENSE" file accompanying 
 //     this file.
 //
 //     This program is distributed in the hope that it will be useful,
 //     but WITHOUT ANY WARRANTY; without even the implied warranty of
 //     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-//     Huawei Software License for more details.
+//     Huawei Software License for more details. 
 //------------------------------------------------------------------------------
 
 `resetall
@@ -64,7 +64,7 @@ module mmu_tx_pkt
     //interface with mmu_tx_bd
     //fpga ddr sa, da 
     output   reg                             hacc_wr                           ,
-    output   wire    [8:0]                   hacc_waddr                        ,
+    output   reg     [8:0]                   hacc_waddr                        ,
     output   reg     [87:0]                  hacc_wdata                        ,
 
     //online cnt feedback
@@ -117,6 +117,8 @@ wire                           pkt_fifo_wdata_pre_sop                   ;
 reg                            pkt_fifo_wdata_sop                       ;
 reg                            hacc_flag                                ;
 reg   [8:0]                    hacc_sn                                  ;
+reg   [1:0]                    opcode                                   ;
+reg   [10:0]                   sn_wdata_lock                            ;
 reg                            pkt_slice_sop                            ;
 reg                            pkt_slice_sop_1dly                       ;
 reg                            pkt_slice_soc                            ;
@@ -250,6 +252,8 @@ always @ (posedge clk_sys)
 begin
     if (hacc_flag_bit == 1'b1) begin
         hacc_sn <= pkt_fifo_wdata_pre[232:224];
+        opcode  <= pkt_fifo_wdata_pre[234:233];
+        sn_wdata_lock <= pkt_fifo_wdata_pre[234:224];
     end
     else;
 end
@@ -310,7 +314,11 @@ begin
     else;
 end
 
-assign hacc_waddr = hacc_sn;
+always @ (posedge clk_sys)
+begin
+    hacc_waddr <= hacc_sn;
+end
+
 
 always @ (posedge clk_sys or posedge rst)
 begin
@@ -330,7 +338,7 @@ begin
     end
     else begin
         rd_ddr_rsp_en <= ((pkt_fifo_wr_pre == 1'b1) && (hacc_flag == 1'b1) &&
-                          (sn_fifo_wdata[10:9] == 2'd1));
+                          (opcode == 2'd1));
         rd_ddr_rsp_en_1dly <= rd_ddr_rsp_en;
     end
 end 
@@ -338,7 +346,7 @@ end
 
 always @ (posedge clk_sys)
 begin
-    rd_ddr_rsp_sn <= sn_fifo_wdata;
+    rd_ddr_rsp_sn <= sn_wdata_lock;
     rd_ddr_rsp_sn_1dly <= rd_ddr_rsp_sn;
 end 
 
@@ -445,7 +453,7 @@ begin
     end
     else begin
         seq_fifo_wr <= pkt_fifo_wr_pre & hacc_flag &
-                       (pkt_fifo_wdata_pre[234:233] != 2'd1);
+                       (opcode != 2'd1);
     end
 end
 
@@ -637,20 +645,6 @@ begin
 end 
 
 
-//always @ (posedge clk_sys or posedge rst)
-//begin
-//    if (rst == 1'b1) begin
-//        wr_ddr_rsp_en <= 1'b0;
-//    end
-//    else begin
-//        wr_ddr_rsp_en <= sn_fifo_rd;
-//    end
-//end 
-//
-//always @ (posedge clk_sys)
-//begin
-//    wr_ddr_rsp_sn <= sn_fifo_rdata[10:0];
-//end
 always @ (posedge clk_sys or posedge rst)
 begin
     if (rst == 1'b1) begin
@@ -707,7 +701,7 @@ begin
                                     seq_fifo_ef
                                     };
 
-    reg_hacc_sn                 <= {2'd0,hacc_sn}; 
+    reg_hacc_sn                 <= {opcode,hacc_sn}; 
     reg_hacc_ddr_saddr          <= hacc_wdata[35:0]; 
     reg_hacc_ddr_daddr          <= hacc_wdata[71:36];
     reg_ddr_rsp_sn              <= wr_ddr_rsp_sn;
@@ -727,17 +721,17 @@ begin
     end
     else begin
         reg_mmu_tx_pkt_err          <= {
-                                       {(30 - DDR_NUM*4){1'b0}},
-                                       sn_fifo_stat[5],
-                                       seq_fifo_stat[5],
-                                       ddr_rsp_fifo_stat[29],
-                                       ddr_rsp_fifo_stat[21],
-                                       ddr_rsp_fifo_stat[13],
-                                       ddr_rsp_fifo_stat[5],
-                                       eoc_fifo_stat[29],
-                                       eoc_fifo_stat[21],
-                                       eoc_fifo_stat[13],
-                                       eoc_fifo_stat[5],
+                                       4'd0,
+                                       sn_fifo_stat[5:4],
+                                       seq_fifo_stat[5:4],
+                                       ddr_rsp_fifo_stat[29:28],
+                                       ddr_rsp_fifo_stat[21:20],
+                                       ddr_rsp_fifo_stat[13:12],
+                                       ddr_rsp_fifo_stat[5:4],
+                                       eoc_fifo_stat[29:28],
+                                       eoc_fifo_stat[21:20],
+                                       eoc_fifo_stat[13:12],
+                                       eoc_fifo_stat[5:4],
                                        ddr_info_fifo_err,
                                        pkt_fifo_err
                                        }; 

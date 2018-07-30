@@ -66,6 +66,10 @@ module  mmu_rx_bd
                  output  [71:0]                  rcmd_ff_wdata              ,  
                  
                  //with cpu 
+                 output  reg                     axis_fifo_rd               ,
+                 output  reg                     bd2rx_axis_fifo_rd         ,
+                 output  reg                     read_op_vld_dly            ,
+                 output  reg                     write_op_vld_dly           ,
                  output                          reg_mmu_rxbd_en            ,
                  output                          reg_mmu_rdcmd_en           ,
                  output  [31:0]                  reg_mmu_rxbd_sta           ,
@@ -77,7 +81,8 @@ module  mmu_rx_bd
 /*********************************************************************************************************************\
     signals
 \*********************************************************************************************************************/
-reg                                 axis_fifo_rd                    ;
+//reg                                 axis_fifo_rd                    ;
+reg                                 tdm_flg                         ;
 reg                                 axis_fifo_rd_1dly               ;
 wire    [539:0]                     axis_fifo_rdata_conver          ;
 wire    [539:0]                     axis_fifo_rdata                 ;
@@ -85,7 +90,7 @@ reg     [539:0]                     axis_fifo_rdata_1dly            ;
 wire                                axis_fifo_emp                   ;
 
 wire                                bd2rx_axis_fifo_emp             ;
-reg                                 bd2rx_axis_fifo_rd              ;
+//reg                                 bd2rx_axis_fifo_rd              ;
 wire    [539:0]                     bd2rx_axis_fifo_rdata_conver    ;
 wire    [539:0]                     bd2rx_axis_fifo_rdata           ;
 wire                                read_op_vld                     ;
@@ -142,6 +147,7 @@ wire                                fifo_err                        ;
 wire                                bd2rx_fifo_err                  ;            
 wire                                chn_seq_parity_err              ;            
 wire    [3:0]                       eoc_tag_parity_err              ;            
+wire    [31:0]                      eoc_tag_ff_stat                 ;            
 
 wire    [3:0]                       overflow                        ;            
 wire    [3:0]                       underflow                       ;            
@@ -182,16 +188,28 @@ genvar k ;
 always@(posedge clk_sys or posedge rst)
 begin
     if(rst == 1'd1)begin
+        tdm_flg <= 1'd0;    
+    end
+    else begin
+        tdm_flg <= ~tdm_flg;    
+    end
+end
+
+always@(posedge clk_sys or posedge rst)
+begin
+    if(rst == 1'd1)begin
         axis_fifo_rd <= 1'd0;    
     end
     else if((axis_fifo_emp == 1'd0)&&(cache_ff == 1'd0)
-            &&(axis_fifo_rd == 1'd0)&&(cut_flag==1'b0))begin
+            &&(axis_fifo_rd == 1'd0)&&(cut_flag==1'b0) && 
+           (tdm_flg == 1'b1))begin
         axis_fifo_rd <= 1'd1;    
     end
     else begin
         axis_fifo_rd <= 1'd0;    
     end
 end
+
 
 //------------------------------------------------------------------------------
 always@(posedge clk_sys or posedge rst)
@@ -201,7 +219,7 @@ begin
     end
     else if((bd2rx_axis_fifo_emp == 1'd0)&&(cache_ff == 1'd0) &&
             (bd2rx_axis_fifo_rd == 1'd0)&&(cut_flag==1'b0) && 
-            (mmu_tx2rx_bd_afull == 1'b0))begin
+            (mmu_tx2rx_bd_afull == 1'b0) && (tdm_flg == 1'b0))begin
         bd2rx_axis_fifo_rd <= 1'd1;    
     end
     else begin
@@ -222,8 +240,18 @@ assign bd2rx_axis_fifo_rdata[539:512] = bd2rx_axis_fifo_rdata_conver[539:512];
 assign read_op_vld = bd2rx_axis_fifo_rd & (bd2rx_axis_fifo_rdata[225:224] == 2'd1);
 assign write_op_vld = bd2rx_axis_fifo_rd & (bd2rx_axis_fifo_rdata[225:224] == 2'd2);
 
-//assign fddr_des_addr_base = axis_fifo_rdata[327:292];
-//assign length             = axis_fifo_rdata[359:328]; 
+always@(posedge clk_sys or posedge rst)
+begin
+    if(rst == 1'd1)begin
+        read_op_vld_dly <= 1'd0;    
+        write_op_vld_dly <= 1'd0;    
+    end
+    else begin
+        read_op_vld_dly <= read_op_vld;    
+        write_op_vld_dly <= write_op_vld;    
+    end
+end
+
 
 assign ddr_id   = fddr_des_addr[35:34]; 
 
@@ -305,7 +333,6 @@ begin
         normal_cmd_wen <= 1'd0;
     end
     else begin
-     //   normal_cmd_wen <= axis_fifo_rd&(((len_h20b==20'd1)&&(len_l12b==12'd0))||(len_h20b==20'd0));
         normal_cmd_wen <= (axis_fifo_rd | read_op_vld)&(((len_h20b==20'd1)&&(len_l12b==12'd0))||(len_h20b==20'd0));
     end
 end    
@@ -313,7 +340,6 @@ end
 assign long_cmd_wen = cut_en;
 assign rcmd_ff_wen   = normal_cmd_wen | long_cmd_wen;  
 
-//assign cut_start = ((axis_fifo_rd==1'b1)&(((len_h20b==20'd1)&&(len_l12b!=12'd0))||(len_h20b>20'd1))); 
 assign cut_start = (((axis_fifo_rd==1'b1) | (read_op_vld==1'b1))&(((len_h20b==20'd1)&&(len_l12b!=12'd0))||(len_h20b>20'd1))); 
 
 always@(posedge clk_sys or posedge rst)
@@ -335,7 +361,6 @@ begin
     if(rst == 1'd1)begin
         left_llen <= 12'd0;
     end
- //   else if (axis_fifo_rd == 1'b1) begin
     else if ((axis_fifo_rd == 1'b1) || (read_op_vld == 1'b1)) begin
         left_llen <= len_l12b;
     end
@@ -347,7 +372,6 @@ begin
     if(rst == 1'd1)begin
         left_hlen <= 20'd0;
     end
-  //  else if(axis_fifo_rd==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         left_hlen <= len_h20b;
     end
@@ -362,13 +386,11 @@ begin
     if(rst == 1'd1)begin
         left_hlen_tmp <= 20'd0;
     end
- //   else if(((axis_fifo_rd==1'b1)&&(len_h20b==20'd0))
     else if((((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))&&(len_h20b==20'd0))
            || ((cut_flag == 1'b1)&&(cache_ff==1'b0)&&
               ((left_hlen == 20'd1)&&(left_llen!=12'd0))))begin
         left_hlen_tmp <= 20'd0;
     end
- //   else if(((axis_fifo_rd==1'b1)&&(len_h20b!=20'd0))
     else if((((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))&&(len_h20b!=20'd0))
            || ((cut_flag == 1'b1)&&(cache_ff==1'b0)&&
               ((left_hlen == 20'd2)&&(left_llen==12'd0))))begin
@@ -385,7 +407,6 @@ begin
     else if(cut_start ==1'b1)begin
         left_llen_tmp <= 12'd0;
     end
-  //  else if(axis_fifo_rd ==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         left_llen_tmp <= len_l12b;
     end
@@ -404,7 +425,6 @@ begin
     if(rst == 1'd1)begin
         fddr_des_laddr <= 12'd0;
     end
-  //  else if(axis_fifo_rd==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         fddr_des_laddr <= fddr_des_addr_base[11:0];
     end   
@@ -416,7 +436,6 @@ begin
     if(rst == 1'd1)begin
         fddr_des_haddr_l6b <= 6'd0;
     end
-   // else if(axis_fifo_rd==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         fddr_des_haddr_l6b <= fddr_des_addr_base[17:12];
     end   
@@ -431,7 +450,6 @@ begin
     if(rst == 1'd1)begin
         fddr_des_haddr_h16b <= 16'd0;
     end
-   // else if(axis_fifo_rd==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         fddr_des_haddr_h16b <= fddr_des_addr_base[33:18];
     end   
@@ -446,7 +464,6 @@ begin
     if(rst == 1'd1)begin
         fddr_des_haddr_h2b <= 2'd0;
     end
-  //  else if(axis_fifo_rd==1'b1)begin
     else if((axis_fifo_rd==1'b1) || (read_op_vld==1'b1))begin
         fddr_des_haddr_h2b <= fddr_des_addr_base[35:34];
     end   
@@ -492,15 +509,10 @@ begin
        axis_fifo_rd_1dly <= 1'b0 ;
     end
     else begin
-     //  axis_fifo_rd_1dly <= axis_fifo_rd ;
        axis_fifo_rd_1dly <= axis_fifo_rd | read_op_vld;
     end
 end
 
-//always@(posedge clk_sys)
-//begin
-//    axis_fifo_rdata_1dly <= axis_fifo_rdata ;
-//end
 
 
 always@(posedge clk_sys)
@@ -536,7 +548,6 @@ begin
        reg_len_err <= 1'b0 ;
     end
     else begin
-     //  reg_len_err <= axis_fifo_rd & (~(|length));
        reg_len_err <= (axis_fifo_rd | read_op_vld) & (~(|length));
     end
 end
@@ -547,11 +558,42 @@ assign chn_seq_wen      = axis_fifo_rd_1dly;
 assign chn_seq_wdata    = ddr_id ;
 
 
-assign reg_mmu_rxbd_err = {8'd0,bd2rx_fifo_err,chn_seq_ff_stat,reg_len_err,fifo_err,chn_seq_parity_err,eoc_tag_parity_err,underflow,overflow};
-assign reg_mmu_rxbd_sta = {7'd0,bd2rx_axis_fifo_emp,bd2rx_fifo_status,cache_ff,axis_fifo_emp,fifo_status,chn_seq_full,chn_seq_empty,eoc_tag_full,eoc_tag_empty,ve_ff_aff,ve_ff_empty};
+assign reg_mmu_rxbd_err = {1'b0,
+                          eoc_tag_ff_stat[30:28],
+                          eoc_tag_ff_stat[22:20],
+                          eoc_tag_ff_stat[14:12],
+                          eoc_tag_ff_stat[6:4],
+                          bd2rx_fifo_err,
+                          chn_seq_ff_stat[6:4],
+                          reg_len_err,
+                          fifo_err,
+                          chn_seq_parity_err,
+                          eoc_tag_parity_err,
+                          underflow,
+                          overflow};
 
-//assign reg_mmu_rxbd_en  = axis_fifo_rd; 
-assign reg_mmu_rxbd_en  = axis_fifo_rd | read_op_vld; 
+assign reg_mmu_rxbd_sta = {5'd0,
+                          cut_flag,
+                          mmu_tx2rx_bd_afull,
+                          bd2rx_axis_fifo_emp,
+                          bd2rx_fifo_status,
+                          cache_ff,
+                          axis_fifo_emp,
+                          fifo_status,
+                          chn_seq_full,
+                          chn_seq_empty,
+                          eoc_tag_full,
+                          eoc_tag_empty,
+                          ve_ff_aff,
+                          ve_ff_empty};
+
+assign reg_eoc_tag_ff_stat = {16'd0,
+                          eoc_tag_ff_stat[27:24],
+                          eoc_tag_ff_stat[19:16],
+                          eoc_tag_ff_stat[11:8],
+                          eoc_tag_ff_stat[3:0]};
+
+assign reg_mmu_rxbd_en  = axis_fifo_rd_1dly; 
 assign reg_mmu_rdcmd_en = rcmd_ff_wen; 
 
 /*********************************************************************************************************************\
@@ -668,7 +710,7 @@ generate
              .afull             (eoc_tag_full[k]        ), 
              .aempty            (                       ),
              .parity_err        (eoc_tag_parity_err[k]  ),
-             .fifo_stat         (reg_eoc_tag_ff_stat[8*(k+1)-1:8*k]  ) 
+             .fifo_stat         (eoc_tag_ff_stat[8*(k+1)-1:8*k]  ) 
              );
          
     end

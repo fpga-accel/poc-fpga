@@ -22,10 +22,11 @@ Kernel基于opencl c语言实现的矢量相加实例
 
 
 先编译host代码然后执行 **run.sh** 命令来测试该用例，具体的操作命令如下：
---------------------------------
 
 ```
 make
-sh run.sh vadd ./bin_vadd_hw.xclbin
+sh run.sh vadd ../../../../hardware/sdaccel_design/examples/vadd_cl/prj/bin/bin_vadd_hw.xclbin 0
 
 ```
+
+上面run.sh脚本末尾的0表示slot号，该号在用户申请环境时得到。比如用户申请了一个带4张FPGA加速卡的虚拟机环境，则slot号为0、1、2、3。

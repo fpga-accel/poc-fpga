@@ -117,10 +117,17 @@ wire      [31:0]                  reg_mmu_rxbd_sta           ;
 wire      [31:0]                  reg_mmu_rxbd_err           ; 
 wire                              reg_mmu_rxbd_en            ; 
 wire                              reg_mmu_rdcmd_en           ; 
+wire                              axis_fifo_rd               ; 
+wire                              bd2rx_axis_fifo_rd         ; 
+wire                              read_op_vld                ; 
+wire                              write_op_vld               ; 
 
 wire      [3:0]                   reg_mmu_rxpkt_en           ; 
 wire                              reg_mmu_txpkt_en           ; 
+wire                              reg_add_hacc_en            ; 
+wire                              reg_write_ddr_bd           ; 
 wire      [31:0]                  reg_mmu_rxpkt_sta          ; 
+wire      [31:0]                  reg_mmu_rxpkt_sta1         ; 
 wire      [31:0]                  reg_mmu_rxpkt_err          ; 
                  
 wire      [3:0]                   bucket_inc_wr              ; 
@@ -219,7 +226,10 @@ mmu_rx_pkt u_mmu_rx_pkt
    .reg_timer_1us_cfg        (reg_timer_1us_cfg      ),
    .reg_mmu_rxpkt_en         (reg_mmu_rxpkt_en       ),        
    .reg_mmu_txpkt_en         (reg_mmu_txpkt_en       ),     
+   .add_hacc_en_5dly         (reg_add_hacc_en        ),     
+   .write_ddr_rd_bd_4dly     (reg_write_ddr_bd       ),     
    .reg_mmu_rxpkt_sta        (reg_mmu_rxpkt_sta      ),
+   .reg_mmu_rxpkt_sta1       (reg_mmu_rxpkt_sta1     ),
    .reg_mmu_rxpkt_err        (reg_mmu_rxpkt_err      ),
         
    .ul2sh_pkt_tlast          (ul2sh_pkt_tlast        ),
@@ -267,7 +277,11 @@ mmu_rx_bd u_mmu_rx_bd
     .bucket_af               (bucket_af             ),                                                  
     .mmu_tx2rx_bd_wr         (mmu_tx2rx_bd_wr       ),                                                  
     .mmu_tx2rx_bd_wdata      (mmu_tx2rx_bd_wdata    ),                                                  
-   .mmu_tx2rx_bd_afull       (mmu_tx2rx_bd_afull     ),                                                  
+    .mmu_tx2rx_bd_afull      (mmu_tx2rx_bd_afull     ),                                                  
+    .axis_fifo_rd            (axis_fifo_rd           ),                                                  
+    .bd2rx_axis_fifo_rd      (bd2rx_axis_fifo_rd     ),                                                  
+    .read_op_vld_dly         (read_op_vld            ),                                                  
+    .write_op_vld_dly        (write_op_vld           ),                                                  
  
     .reg_mmu_rxbd_sta        (reg_mmu_rxbd_sta      ), 
     .reg_mmu_rxbd_err        (reg_mmu_rxbd_err      ),  
@@ -290,11 +304,18 @@ u_reg_mmu_rx
              .clk_sys                  (clk_sys                ),
              .rst                      (rst                    ),
              .reg_mmu_txpkt_en         (reg_mmu_txpkt_en       ),     
+             .reg_add_hacc_en          (reg_add_hacc_en        ),     
+             .reg_write_ddr_bd         (reg_write_ddr_bd       ),     
+             .axis_fifo_rd             (axis_fifo_rd           ),                                                  
+             .bd2rx_axis_fifo_rd       (bd2rx_axis_fifo_rd     ),                                                  
+             .read_op_vld              (read_op_vld            ),                                                  
+             .write_op_vld             (write_op_vld           ),                                                  
              .reg_mmu_rxbd_en          (reg_mmu_rxbd_en        ),
              .reg_mmu_rdcmd_en         (reg_mmu_rdcmd_en       ),   
              .reg_mmu_rxpkt_en         (reg_mmu_rxpkt_en       ),
              .reg_mmu_rxbd_sta         (reg_mmu_rxbd_sta       ),
              .reg_mmu_rxpkt_sta        (reg_mmu_rxpkt_sta      ),
+             .reg_mmu_rxpkt_sta1       (reg_mmu_rxpkt_sta1     ),
              .reg_mmu_rxbd_err         (reg_mmu_rxbd_err       ),
              .reg_eoc_tag_ff_stat      (reg_eoc_tag_ff_stat    ),                          
              .reg_mmu_rxpkt_err        (reg_mmu_rxpkt_err      ),
